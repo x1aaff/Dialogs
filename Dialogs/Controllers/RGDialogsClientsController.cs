@@ -15,32 +15,21 @@ namespace Dialogs.Controllers
         }
 
         [HttpGet(Name = "GetClientsDialog")]
-        public Guid Get([FromQuery]Guid[] clientsIDs)
+        public Guid? Get([FromQuery] Guid[] clientsIDs)
         {
-            var data = new RGDialogsClients();
-            var dataList = data.Init();
+            var data = new RGDialogsClients().Init();
 
-            //инициализация переменной, которая будет содержать результаты поиска
-            HashSet<Guid> clientDialogs = new();
+            var query = data
+                .GroupBy(d => d.IDRGDialog)
+                .Where(g => g.Count() == clientsIDs.Count())
+                .Where(g => g.Select(d => d.IDClient).Intersect(clientsIDs).Count() == g.Count())?
+                .FirstOrDefault()?
+                .FirstOrDefault()?
+                .IDRGDialog;
 
-            foreach (var dialog in dataList.Select(d => d.IDRGDialog).ToHashSet())
+            if (query != null)
             {
-                //чаты с таким же количеством участников, что и заявлено в параметрах метода
-                if (dataList.Where(d => d.IDRGDialog == dialog).Select(d => d.IDRGDialog).Count() == clientsIDs.Length)
-                {
-                    clientDialogs.Add(dialog);
-                }
-            }
-
-            foreach (var clientID in clientsIDs)
-            {
-                //чаты, где состоит рассматриваемый клиент
-                clientDialogs.IntersectWith(dataList.Where(d => d.IDClient == clientID).Select(d => d.IDRGDialog));
-            }
-
-            if (clientDialogs.Any())
-            {
-                return clientDialogs.First();
+                return query;
             }
 
             return Guid.Empty;
